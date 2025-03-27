@@ -13,6 +13,14 @@ class ExamApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: Colors.black87,
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.grey[900],
+          titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        listTileTheme: ListTileThemeData(iconColor: Colors.white, textColor: Colors.white),
+      ),
       home: ExamHomePage(),
     );
   }
@@ -20,8 +28,9 @@ class ExamApp extends StatelessWidget {
 
 class ExamHomePage extends StatelessWidget {
   final List<Map<String, String>> examLinks = [
-    {'title': 'Soal Ujian 1', 'url': 'https://forms.gle/example1'},
-    {'title': 'Soal Ujian 2', 'url': 'https://forms.gle/example2'},
+    {'title': 'Soal Ujian 1', 'url': 'https://forms.gle/example1', 'password': '1234'},
+    {'title': 'Soal Ujian 2', 'url': 'https://forms.gle/example2', 'password': '5678'},
+
   ];
 
   @override
@@ -31,16 +40,26 @@ class ExamHomePage extends StatelessWidget {
       body: ListView.builder(
         itemCount: examLinks.length,
         itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(examLinks[index]['title']!),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ExamWebView(url: examLinks[index]['url']!),
-                ),
-              );
-            },
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(vertical: 15),
+                textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExamWebView(url: examLinks[index]['url']!),
+                  ),
+                );
+              },
+              child: Text(examLinks[index]['title']!),
+            ),
           );
         },
       ),
@@ -94,6 +113,7 @@ class _ExamWebViewState extends State<ExamWebView> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
+        backgroundColor: Colors.black87,
         body: WebViewWidget(controller: _controller),
       ),
     );
