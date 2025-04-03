@@ -8,35 +8,6 @@ void main() {
   runApp(ExamApp());
 }
 
-void _checkGuidedAccess(BuildContext context) async {
-  if (Platform.isIOS) {
-    final mode = await getKioskMode(); // Cek status Guided Access
-    if (mode == KioskMode.disabled) {
-      _showGuidedAccessAlert(context);
-    }
-  }
-}
-
-void _showGuidedAccessAlert(BuildContext context) {
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: Text("Aktifkan Guided Access"),
-      content: Text("Untuk mencegah siswa keluar dari aplikasi, aktifkan 'Guided Access':\n\n"
-          "1. Buka **Settings** → **Accessibility**.\n"
-          "2. Pilih **Guided Access** dan aktifkan.\n"
-          "3. Saat ujian dimulai, tekan **tombol samping 3x** untuk mengunci aplikasi."),
-      actions: [
-        TextButton(
-          child: Text("OK"),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ],
-    ),
-  );
-}
-
 class ExamApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -59,8 +30,45 @@ class ExamHomePage extends StatelessWidget {
   final List<Map<String, String>> examLinks = [
     {'title': 'Soal Ujian 1', 'url': 'https://forms.gle/example1', 'password': '1234'},
     {'title': 'Soal Ujian 2', 'url': 'https://forms.gle/example2', 'password': '5678'},
-
   ];
+
+  void _promptForPassword(BuildContext context, String correctPassword, String url) {
+    TextEditingController passwordController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Masukkan Password"),
+        content: TextField(
+          controller: passwordController,
+          obscureText: true,
+          decoration: InputDecoration(hintText: "Password"),
+        ),
+        actions: [
+          TextButton(
+            child: Text("Batal"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          TextButton(
+            child: Text("OK"),
+            onPressed: () {
+              if (passwordController.text == correctPassword) {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => ExamWebView(url: url)),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Password salah!"), backgroundColor: Colors.red),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,11 +88,10 @@ class ExamHomePage extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () {
-                Navigator.push(
+                _promptForPassword(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ExamWebView(url: examLinks[index]['url']!),
-                  ),
+                  examLinks[index]['password']!,
+                  examLinks[index]['url']!,
                 );
               },
               child: Text(examLinks[index]['title']!),
@@ -98,27 +105,7 @@ class ExamHomePage extends StatelessWidget {
 
 class ExamWebView extends StatefulWidget {
   final String url;
-  late final WebViewController _controller; // Deklarasi _controller
-
   ExamWebView({required this.url});
-
-  @override
-  Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false, // Blokir tombol back Android
-      child: GestureDetector(
-        onHorizontalDragUpdate: (details) {
-          if (Platform.isIOS && details.primaryDelta! > 20) {
-            // Cegah swipe-back di iOS
-          }
-        },
-        child: Scaffold(
-          backgroundColor: Colors.black87,
-          body: WebViewWidget(controller: _controller),
-        ),
-      ),
-    );
-  }
 
   @override
   _ExamWebViewState createState() => _ExamWebViewState();
@@ -135,7 +122,6 @@ class _ExamWebViewState extends State<ExamWebView> {
       ..loadRequest(Uri.parse(widget.url));
 
     _enableKioskMode();
-    _checkGuidedAccess(context);
   }
 
   void _enableKioskMode() async {
