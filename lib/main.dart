@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:kiosk_mode/kiosk_mode.dart';
+import 'package:battery_plus/battery_plus.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
 import 'dart:io';
 
 void main() {
@@ -113,6 +117,12 @@ class ExamWebView extends StatefulWidget {
 
 class _ExamWebViewState extends State<ExamWebView> {
   late final WebViewController _controller;
+  final Battery _battery = Battery();
+  final Connectivity _connectivity = Connectivity();
+  String _batteryLevel = "-";
+  String _connectionStatus = "-";
+  String _time = "-";
+  Timer? _timer;
 
   @override
   void initState() {
@@ -120,8 +130,8 @@ class _ExamWebViewState extends State<ExamWebView> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..loadRequest(Uri.parse(widget.url));
-
     _enableKioskMode();
+    _updateStatus();
   }
 
   void _enableKioskMode() async {
@@ -138,19 +148,75 @@ class _ExamWebViewState extends State<ExamWebView> {
     }
   }
 
+  void _updateStatus() {
+    _timer = Timer.periodic(Duration(seconds: 10), (timer) async {
+      final batteryLevel = await _battery.batteryLevel;
+      final connectivityResult = await _connectivity.checkConnectivity();
+      final timeNow = DateFormat('HH:mm').format(DateTime.now());
+      setState(() {
+        _batteryLevel = "$batteryLevel%";
+        _connectionStatus = connectivityResult.toString().split(".").last;
+        _time = timeNow;
+      });
+    });
+  }
+
+  void _confirmExit() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text("Konfirmasi"),
+        content: Text("Apakah Anda yakin ingin keluar dari ujian?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text("Tidak"),
+          ),
+          TextButton(
+            onPressed: () {
+              _disableKioskMode();
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+            child: Text("Ya"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _disableKioskMode();
+    _timer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => false,
-      child: Scaffold(
-        backgroundColor: Colors.black87,
-        body: WebViewWidget(controller: _controller),
+    return Scaffold(
+      backgroundColor: Colors.black87,
+      body: Column(
+        children: [
+          Container(
+            padding: EdgeInsets.all(10),
+            color: Colors.grey[900],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Baterai: $_batteryLevel", style: TextStyle(color: Colors.white)),
+                Text("WiFi: $_connectionStatus", style: TextStyle(color: Colors.white)),
+                Text("Waktu: $_time", style: TextStyle(color: Colors.white)),
+                IconButton(
+                  icon: Icon(Icons.exit_to_app, color: Colors.red),
+                  onPressed: _confirmExit,
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: WebViewWidget(controller: _controller)),
+        ],
       ),
     );
   }
